@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: postgres-db
+    image: postgres:14.1-alpine
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    ports:
+      - '5432:5432'
+    expose:
+      - 5432
+    volumes:
+      - ./db-data/:/var/lib/postgresql/data/
+      - ./db-init:/docker-entrypoint-initdb.d/
+    env_file:
+      - .env
+  currency-app:
+    container_name: currency-app
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: currency-app:latest
+    ports:
+      - '8080:8080'
+    links:
+      - db
+    volumes:
+      - './:/src'
+    env_file:
+      - .env
+volumes:
+  db:
+    driver: local
