@@ -6,6 +6,8 @@ import com.exchange.currency.repository.ExchangeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -43,9 +45,8 @@ public class CurrencyServiceImpl implements CurrencyService {
         List<Exchange> exchanges = exchangeRepository.findAllByCreatedDateBetween(dateFrom, dateTo);
         return countAverage(exchanges);
     }
-
-//    @Scheduled(cron = "0 0/30 * * * ?", zone = "Europe/Kiev")
-    @Scheduled(cron = "*/10 * * * * *", zone = "Europe/Kiev")
+    @EventListener(ApplicationReadyEvent.class)
+    @Scheduled(cron = "0 0/30 * * * ?", zone = "Europe/Kiev")
     public void collectData() {
         List<Exchange> result = new ArrayList<>();
         List<Exchange> recentExchanges = exchangeRepository.findRecentExchangesByProviders();
