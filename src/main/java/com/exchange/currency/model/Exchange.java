@@ -1,7 +1,5 @@
 package com.exchange.currency.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.gson.annotations.SerializedName;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,16 +25,12 @@ public class Exchange {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @SerializedName(value = "baseCurrency", alternate = {"base_ccy", "currencyCodeB"})
     private String baseCurrency;
 
-    @SerializedName(value = "currency", alternate = {"ccy","currencyCodeA"})
     private String currency;
 
-    @SerializedName(value = "buyRate", alternate = {"buy","rateBuy","bid"})
     private BigDecimal buyRate;
 
-    @SerializedName(value = "sellRate", alternate = {"sale","rateSell","ask"})
     private BigDecimal sellRate;
 
     @CreationTimestamp
@@ -54,8 +48,9 @@ public class Exchange {
         this.provider = provider;
     }
 
-    @JsonIgnore
-    public Long getId() {
-        return id;
+    public boolean hasSameValue(Exchange exchange) {
+        return this.getCurrency().equals(exchange.getCurrency()) &&
+                this.getBuyRate().compareTo(exchange.getBuyRate()) == 0 &&
+                this.getSellRate().compareTo(exchange.getSellRate()) == 0;
     }
 }

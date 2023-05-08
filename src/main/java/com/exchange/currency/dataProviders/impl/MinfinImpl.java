@@ -2,50 +2,59 @@ package com.exchange.currency.dataProviders.impl;
 
 import com.exchange.currency.apiClient.ApiClient;
 import com.exchange.currency.dataProviders.DataProvider;
-import com.exchange.currency.exceptions.ExchangeException;
+import com.exchange.currency.dto.MinfinDTO;
 import com.exchange.currency.model.Exchange;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 @Component
+@RequiredArgsConstructor
+@ConfigurationProperties("exchange")
 public class MinfinImpl implements DataProvider {
-    public static final String BASE_CURRENCY = "UAH";
-    @Value("#{'${desired.currencies}'.split(',')}")
-    private List<String> desiredCurrencies;
-    @Value("${minfin.api}")
-    private String api;
-    @Value("${minfin.provider}")
-    private String provider;
-    private ApiClient apiClient;
+    public static final String PROVIDER = "minfin";
+    private final Gson gson = new GsonBuilder().create();
+    private final ApiClient apiClient;
+    private List<String> targetLiteral;
 
-    @Autowired
-    public MinfinImpl(ApiClient apiClient) {
-        this.apiClient = apiClient;
-    }
+    @Value("${providers.minfin.api}")
+    private String api;
+
+    @Value("${exchange.baseLiteral}")
+    private String baseLiteral;
+
     @Override
     public List<Exchange> loadData() throws Exception {
-        List<Exchange> exchanges = apiClient.loadData(api, provider);
-        return convertData(exchanges);
+        String response = apiClient.getResponse(api);
+
+        return convertResponse(response);
     }
 
-    private List<Exchange> convertData(List<Exchange> exchanges) {
-        List<Exchange> result = new ArrayList<>();
+    private List<Exchange> convertResponse(String response) {
+        List<MinfinDTO> rates = gson.fromJson(response, new TypeToken<List<MinfinDTO>>(){}.getType());
 
-        for (String desiredCurrency : desiredCurrencies) {
-            result.add(exchanges.stream()
-                    .filter(e -> e.getCurrency().equals(desiredCurrency))
-                    .findFirst()
-                    .orElseThrow(() ->
-                            new ExchangeException("Currency not found. Source: " + provider + ", Currency: " + desiredCurrency)));
-        }
-        for (Exchange exchange : result) {
-            exchange.setCurrency(exchange.getCurrency().toUpperCase());
-            exchange.setBaseCurrency(BASE_CURRENCY);
-        }
-        return result;
+        return rates.stream()
+                .filter(rate -> targetLiteral.contains(rate.getCurrency()))
+                .collect(Collectors.groupingBy(MinfinDTO::getCurrency))
+                .values().stream()
+                .map(minfinDTOS -> {
+                    MinfinDTO minfinDto = minfinDTOS.get(0);
+                    Exchange exchange = new Exchange();
+                    exchange.setBaseCurrency(baseLiteral);
+                    exchange.setCurrency(minfinDto.getCurrency().toUpperCase());
+                    exchange.setBuyRate(minfinDto.getBid());
+                    exchange.setSellRate(minfinDto.getAsk());
+                    exchange.setProvider(PROVIDER);
+                    return exchange;
+                })
+                .collect(Collectors.toList());
     }
 }

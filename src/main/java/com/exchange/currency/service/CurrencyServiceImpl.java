@@ -3,9 +3,8 @@ package com.exchange.currency.service;
 import com.exchange.currency.dataProviders.DataProvider;
 import com.exchange.currency.model.Exchange;
 import com.exchange.currency.repository.ExchangeRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,16 +19,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class CurrencyServiceImpl implements CurrencyService {
-    public static final Logger logger = LoggerFactory.getLogger(CurrencyServiceImpl.class);
-    public static final String AVERAGE = "AVERAGE";
-    ExchangeRepository exchangeRepository;
-    List<DataProvider> providers;
-    @Autowired
-    public CurrencyServiceImpl(ExchangeRepository exchangeRepository, List<DataProvider> providers) {
-        this.exchangeRepository = exchangeRepository;
-        this.providers = providers;
-    }
+    private static final String AVERAGE = "AVERAGE";
+    private final ExchangeRepository exchangeRepository;
+    private final List<DataProvider> providers;
 
     @Override
     public List<Exchange> getCurrentRates() {
@@ -53,49 +48,52 @@ public class CurrencyServiceImpl implements CurrencyService {
         for (DataProvider provider : providers) {
             try {
                 List<Exchange> exchanges = provider.loadData();
-                roundRateValues(exchanges);
                 result.addAll(exchanges.stream()
+                        .peek(exchange -> {
+                            exchange.setSellRate(exchange.getSellRate().setScale(2, RoundingMode.HALF_UP));
+                            exchange.setBuyRate(exchange.getBuyRate().setScale(2, RoundingMode.HALF_UP));
+                        })
                         .filter(exchange -> recentExchanges.stream()
-                                .noneMatch(recentExchange -> exchange.getCurrency().equals(recentExchange.getCurrency()) &&
-                                        exchange.getBuyRate().compareTo(recentExchange.getBuyRate()) == 0 &&
-                                        exchange.getSellRate().compareTo(recentExchange.getSellRate()) == 0))
+                                .noneMatch(exchange::hasSameValue))
                         .toList());
             } catch (Exception e) {
-                logger.error(e.getMessage());
+                log.error(e.getMessage());
             }
         }
         exchangeRepository.saveAll(result);
     }
 
-    private void roundRateValues(List<Exchange> exchanges) {
-        int decimalPlaces = 2;
-        for (Exchange exchange : exchanges) {
-            BigDecimal sellRate = exchange.getSellRate().setScale(decimalPlaces, RoundingMode.HALF_UP);
-            BigDecimal buyRate = exchange.getBuyRate().setScale(decimalPlaces, RoundingMode.HALF_UP);
-            exchange.setSellRate(sellRate);
-            exchange.setBuyRate(buyRate);
-        }
-    }
-
     private List<Exchange> countAverage(List<Exchange> exchanges) {
-        Map<String, Map<String, List<Exchange>>> exchangesByCurrency =
-                exchanges.stream().collect(Collectors.groupingBy(Exchange::getCurrency,
-                        Collectors.groupingBy(Exchange::getBaseCurrency)));
+        Map<String, Map<String, List<Exchange>>> exchangesByCurrency = collectExchangesByCurrency(exchanges);
 
         List<Exchange> result = new ArrayList<>();
+
         exchangesByCurrency.forEach(
                 (currency, baseCurrencyMap) -> baseCurrencyMap.forEach((baseCurrency, exchangeList) -> {
-            BigDecimal avgSellRate = exchangeList.stream()
-                    .map(Exchange::getSellRate)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(exchangeList.size()), RoundingMode.HALF_UP);
-            BigDecimal avgBuyRate = exchangeList.stream()
-                    .map(Exchange::getBuyRate)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(exchangeList.size()), RoundingMode.HALF_UP);
+            BigDecimal avgSellRate = getAvgSellRate(exchangeList);
+            BigDecimal avgBuyRate = getAvgBuyRate(exchangeList);
             result.add(new Exchange(baseCurrency, currency, avgBuyRate, avgSellRate,
                     new Date(System.currentTimeMillis()), AVERAGE));
         }));
         return result;
+    }
+
+    private Map<String, Map<String, List<Exchange>>> collectExchangesByCurrency(List<Exchange> exchanges) {
+        return exchanges.stream().collect(Collectors.groupingBy(Exchange::getCurrency,
+                Collectors.groupingBy(Exchange::getBaseCurrency)));
+    }
+
+    private BigDecimal getAvgBuyRate(List<Exchange> exchangeList) {
+        return exchangeList.stream()
+                .map(Exchange::getBuyRate)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(exchangeList.size()), RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal getAvgSellRate(List<Exchange> exchangeList) {
+        return exchangeList.stream()
+                .map(Exchange::getSellRate)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(exchangeList.size()), RoundingMode.HALF_UP);
     }
 }
