@@ -9,6 +9,7 @@ import java.lang.reflect.Type;
 import java.util.Date;
 
 public class UnixTimestampDeserializer implements JsonDeserializer<Date> {
+
     @Override
     public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         return new Date(json.getAsLong() * 1000);

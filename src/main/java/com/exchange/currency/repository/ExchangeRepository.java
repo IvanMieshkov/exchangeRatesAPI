@@ -26,5 +26,4 @@ public interface ExchangeRepository extends JpaRepository<Exchange, Long> {
                     AND e.created_date = latest_data.latest_timestamp\s
                     GROUP BY e.id, e.provider, e.currency, e.sell_rate, e.buy_rate""")
     List<Exchange> findRecentExchangesByProviders();
-
 }

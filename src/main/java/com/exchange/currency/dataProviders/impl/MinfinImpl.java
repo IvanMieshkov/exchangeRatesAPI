@@ -21,8 +21,11 @@ import java.util.stream.Collectors;
 @ConfigurationProperties("exchange")
 public class MinfinImpl implements DataProvider {
     public static final String PROVIDER = "minfin";
+
     private final Gson gson = new GsonBuilder().create();
+
     private final ApiClient apiClient;
+
     private List<String> targetLiteral;
 
     @Value("${providers.minfin.api}")
@@ -34,7 +37,6 @@ public class MinfinImpl implements DataProvider {
     @Override
     public List<Exchange> loadData() throws Exception {
         String response = apiClient.getResponse(api);
-
         return convertResponse(response);
     }
 

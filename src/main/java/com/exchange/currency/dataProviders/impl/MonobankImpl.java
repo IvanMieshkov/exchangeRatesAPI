@@ -29,9 +29,12 @@ import java.util.stream.Collectors;
 @ConfigurationProperties("exchange")
 public class MonobankImpl implements DataProvider {
     public static final String PROVIDER = "monobank";
+
     private final Gson gson = new GsonBuilder()
             .registerTypeAdapter(Date.class, new UnixTimestampDeserializer()).create();
+
     private final ApiClient apiClient;
+
     private List<Integer> targetCode;
 
     @Value("${providers.monobank.api}")
@@ -46,7 +49,6 @@ public class MonobankImpl implements DataProvider {
     @Override
     public List<Exchange> loadData() throws Exception {
         String response = apiClient.getResponse(api);
-
         return convertResponse(response);
     }
 
@@ -72,7 +74,5 @@ public class MonobankImpl implements DataProvider {
                 })
                 .distinct()
                 .collect(Collectors.toList());
-
-
     }
 }

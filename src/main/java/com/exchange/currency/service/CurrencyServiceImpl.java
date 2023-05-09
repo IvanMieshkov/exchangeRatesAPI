@@ -23,7 +23,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CurrencyServiceImpl implements CurrencyService {
     private static final String AVERAGE = "AVERAGE";
+
     private final ExchangeRepository exchangeRepository;
+
     private final List<DataProvider> providers;
 
     @Override

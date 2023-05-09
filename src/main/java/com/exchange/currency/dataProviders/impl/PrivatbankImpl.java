@@ -18,7 +18,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PrivatbankImpl implements DataProvider {
     public static final String PROVIDER = "privatbank";
+
     private final Gson gson = new GsonBuilder().create();
+
     private final ApiClient apiClient;
 
     @Value("${providers.privatbank.api}")

@@ -22,6 +22,7 @@ import static org.springframework.format.annotation.DateTimeFormat.ISO.DATE;
 @RequiredArgsConstructor
 public class CurrencyController {
     private final CurrencyService currencyServiceImpl;
+
     private final ModelMapper modelMapper;
 
     @GetMapping("/rates")
