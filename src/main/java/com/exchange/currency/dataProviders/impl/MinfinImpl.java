@@ -7,7 +7,9 @@ import com.exchange.currency.model.Exchange;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -18,11 +20,13 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Getter
+@Setter
 @ConfigurationProperties("exchange")
 public class MinfinImpl implements DataProvider {
     public static final String PROVIDER = "minfin";
 
-    private final Gson gson = new GsonBuilder().create();
+    private final Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd hh:mm:ss").create();
 
     private final ApiClient apiClient;
 
